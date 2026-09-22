@@ -1,0 +1,17 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signed() { return request.auth != null; }
+    function image() { return request.resource.contentType.matches('image/.*') && request.resource.size < 5 * 1024 * 1024; }
+    match /posts/{userId}/{fileName} {
+      allow read: if signed();
+      allow create: if signed() && request.auth.uid == userId && image();
+      allow delete: if signed() && request.auth.uid == userId;
+    }
+    match /chats/{userId}/{fileName} {
+      allow read: if signed();
+      allow create: if signed() && request.auth.uid == userId && image();
+      allow delete: if signed() && request.auth.uid == userId;
+    }
+  }
+}

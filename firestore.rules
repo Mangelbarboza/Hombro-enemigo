@@ -15,7 +15,7 @@ service cloud.firestore {
   match /posts/{postId} {
    allow read: if signed();
    allow create: if identity(request.resource.data)
-     && request.resource.data.keys().hasOnly(['uid','name','avatar','text','topic','mood','createdAt'])
+     && request.resource.data.keys().hasOnly(['uid','name','avatar','text','topic','mood','createdAt','media'])
      && text(request.resource.data.text,2000)
      && request.resource.data.topic in ['Vida cotidiana','Relaciones','Universidad','Ansiedad','Amistad','Pequeñas victorias']
      && request.resource.data.mood in ['🌤️','🌧️','🌀','🌱','🔥'];
@@ -23,7 +23,7 @@ service cloud.firestore {
    allow update: if false;
    match /replies/{replyId} {
     allow read: if signed() && postExists(postId);
-    allow create: if postExists(postId) && identity(request.resource.data) && text(request.resource.data.text,1000) && request.resource.data.keys().hasOnly(['uid','name','avatar','text','createdAt']);
+    allow create: if postExists(postId) && identity(request.resource.data) && text(request.resource.data.text,1000) && request.resource.data.keys().hasOnly(['uid','name','avatar','text','createdAt','media']);
     allow delete: if owner(resource.data.uid);
    }
    match /hearts/{uid} {
@@ -50,7 +50,7 @@ service cloud.firestore {
    allow update: if signed() && request.auth.uid in resource.data.members && request.resource.data == resource.data;
    match /messages/{messageId} {
     allow read: if member(roomId);
-    allow create: if member(roomId) && owner(request.resource.data.uid) && text(request.resource.data.text,2000) && request.resource.data.createdAt is number && request.resource.data.createdAt <= request.time.toMillis() + 60000 && request.resource.data.keys().hasOnly(['uid','text','createdAt']);
+    allow create: if member(roomId) && owner(request.resource.data.uid) && text(request.resource.data.text,2000) && request.resource.data.createdAt is number && request.resource.data.createdAt <= request.time.toMillis() + 60000 && request.resource.data.keys().hasOnly(['uid','text','createdAt','media']);
    }
   }
  }

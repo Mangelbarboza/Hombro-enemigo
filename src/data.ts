@@ -1,7 +1,8 @@
 export type Profile = { uid:string; name:string; avatar:string };
-export type Post = { id:string; uid:string; name:string; avatar:string; text:string; topic:string; mood:string; createdAt:number };
-export type Reply = { id:string; uid:string; name:string; avatar:string; text:string; createdAt:number };
-export type Message = { id:string; uid:string; text:string; createdAt:number };
+export type Media = { url:string; path:string };
+export type Post = { id:string; uid:string; name:string; avatar:string; text:string; topic:string; mood:string; createdAt:number; media?:Media };
+export type Reply = { id:string; uid:string; name:string; avatar:string; text:string; createdAt:number; media?:Media };
+export type Message = { id:string; uid:string; text:string; createdAt:number; media?:Media };
 export type Room = { id:string; members:string[]; names:Record<string,string>; createdAt:number };
 export const topics = ['Todo','Vida cotidiana','Relaciones','Universidad','Ansiedad','Amistad','Pequeñas victorias'];
 export const moods = [{emoji:'🌤️',label:'En calma'},{emoji:'🌧️',label:'Triste'},{emoji:'🌀',label:'Con ansiedad'},{emoji:'🌱',label:'Con esperanza'},{emoji:'🔥',label:'Frustrado'}];

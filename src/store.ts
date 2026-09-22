@@ -1,17 +1,20 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy, limit, where } from 'firebase/firestore';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { Profile, Post, Reply, Room, Message } from './data';
 import { examples, exampleReplies } from './data';
 const env=import.meta.env;
 export const cloud=Boolean(env.VITE_FIREBASE_API_KEY && env.VITE_FIREBASE_PROJECT_ID && env.VITE_FIREBASE_APP_ID);
 const app=cloud?initializeApp({apiKey:env.VITE_FIREBASE_API_KEY,authDomain:env.VITE_FIREBASE_AUTH_DOMAIN,projectId:env.VITE_FIREBASE_PROJECT_ID,storageBucket:env.VITE_FIREBASE_STORAGE_BUCKET,messagingSenderId:env.VITE_FIREBASE_MESSAGING_SENDER_ID,appId:env.VITE_FIREBASE_APP_ID}):null;
 const db=app?getFirestore(app):null;
+const storage=app?getStorage(app):null;
 export function read<T>(key:string,fallback:T):T {try {const v=localStorage.getItem('he:'+key);return v?JSON.parse(v):fallback;}catch{return fallback;}}
 export function save(key:string,value:unknown){localStorage.setItem('he:'+key,JSON.stringify(value));window.dispatchEvent(new Event('he-change'));}
 function localWatch<T>(key:string,fallback:T,cb:(v:T)=>void){const run=()=>cb(read(key,fallback));run();window.addEventListener('he-change',run);window.addEventListener('storage',run);return()=>{window.removeEventListener('he-change',run);window.removeEventListener('storage',run);};}
 export async function connect():Promise<Profile>{let profile=read<Profile>('profile',{uid:crypto.randomUUID(),name:'',avatar:'🪐'});if(app){const auth=getAuth(app);await auth.authStateReady();const user=auth.currentUser??(await signInAnonymously(auth)).user;profile={...profile,uid:user.uid};}save('profile',profile);return profile;}
 export async function upsertProfile(profile:Profile){save('profile',profile);if(db)await setDoc(doc(db,'users',profile.uid),{name:profile.name,avatar:profile.avatar,updatedAt:Date.now()},{merge:true});}
+export async function uploadImage(file:File,folder:'posts'|'chats',uid:string):Promise<import('./data').Media>{if(!storage)throw new Error('Firebase Storage no está configurado.');if(!file.type.startsWith('image/')||file.size>5*1024*1024)throw new Error('Selecciona una imagen de máximo 5 MB.');const extension=file.type.split('/')[1]?.replace('jpeg','jpg')||'jpg';const path=`${folder}/${uid}/${Date.now()}-${crypto.randomUUID()}.${extension}`;const target=storageRef(storage,path);await uploadBytes(target,file,{contentType:file.type,customMetadata:{expiresAt:String(Date.now()+7*24*60*60*1000)}});return{path,url:await getDownloadURL(target)};}
 export function watchPosts(cb:(v:Post[])=>void,fail:(e:Error)=>void){return db?onSnapshot(query(collection(db,'posts'),orderBy('createdAt','desc'),limit(100)),s=>cb(s.docs.map(d=>({...d.data(),id:d.id}) as Post)),fail):localWatch<Post[]>('posts',examples,cb);}
 export async function publish(p:Omit<Post,'id'>){if(db){await addDoc(collection(db,'posts'),p);}else{save('posts',[{...p,id:crypto.randomUUID()},...read('posts',examples)]);}}
 export async function removePost(id:string){if(db)await deleteDoc(doc(db,'posts',id));else save('posts',read<Post[]>('posts',examples).filter(p=>p.id!==id));}
