@@ -1,0 +1,26 @@
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getFirestore, collection, doc, getDoc, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy, limit, where } from 'firebase/firestore';
+import type { Profile, Post, Reply, Room, Message } from './data';
+import { examples, exampleReplies } from './data';
+const env=import.meta.env;
+export const cloud=Boolean(env.VITE_FIREBASE_API_KEY && env.VITE_FIREBASE_PROJECT_ID && env.VITE_FIREBASE_APP_ID);
+const app=cloud?initializeApp({apiKey:env.VITE_FIREBASE_API_KEY,authDomain:env.VITE_FIREBASE_AUTH_DOMAIN,projectId:env.VITE_FIREBASE_PROJECT_ID,storageBucket:env.VITE_FIREBASE_STORAGE_BUCKET,messagingSenderId:env.VITE_FIREBASE_MESSAGING_SENDER_ID,appId:env.VITE_FIREBASE_APP_ID}):null;
+const db=app?getFirestore(app):null;
+export function read<T>(key:string,fallback:T):T {try {const v=localStorage.getItem('he:'+key);return v?JSON.parse(v):fallback;}catch{return fallback;}}
+export function save(key:string,value:unknown){localStorage.setItem('he:'+key,JSON.stringify(value));window.dispatchEvent(new Event('he-change'));}
+function localWatch<T>(key:string,fallback:T,cb:(v:T)=>void){const run=()=>cb(read(key,fallback));run();window.addEventListener('he-change',run);window.addEventListener('storage',run);return()=>{window.removeEventListener('he-change',run);window.removeEventListener('storage',run);};}
+export async function connect():Promise<Profile>{let profile=read<Profile>('profile',{uid:crypto.randomUUID(),name:'',avatar:'🪐'});if(app){const auth=getAuth(app);await auth.authStateReady();const user=auth.currentUser??(await signInAnonymously(auth)).user;profile={...profile,uid:user.uid};}save('profile',profile);return profile;}
+export async function upsertProfile(profile:Profile){save('profile',profile);if(db)await setDoc(doc(db,'users',profile.uid),{name:profile.name,avatar:profile.avatar,updatedAt:Date.now()},{merge:true});}
+export function watchPosts(cb:(v:Post[])=>void,fail:(e:Error)=>void){return db?onSnapshot(query(collection(db,'posts'),orderBy('createdAt','desc'),limit(100)),s=>cb(s.docs.map(d=>({...d.data(),id:d.id}) as Post)),fail):localWatch<Post[]>('posts',examples,cb);}
+export async function publish(p:Omit<Post,'id'>){if(db){await addDoc(collection(db,'posts'),p);}else{save('posts',[{...p,id:crypto.randomUUID()},...read('posts',examples)]);}}
+export async function removePost(id:string){if(db)await deleteDoc(doc(db,'posts',id));else save('posts',read<Post[]>('posts',examples).filter(p=>p.id!==id));}
+export function watchReplies(id:string,cb:(v:Reply[])=>void,fail:(e:Error)=>void){return db?onSnapshot(query(collection(db,'posts',id,'replies'),orderBy('createdAt'),limit(200)),s=>cb(s.docs.map(d=>({...d.data(),id:d.id}) as Reply)),fail):localWatch<Reply[]>('replies:'+id,exampleReplies[id]??[],cb);}
+export async function reply(id:string,p:Omit<Reply,'id'>){if(db)await addDoc(collection(db,'posts',id,'replies'),p);else save('replies:'+id,[...read<Reply[]>('replies:'+id,exampleReplies[id]??[]),{...p,id:crypto.randomUUID()}]);}
+export function watchHearts(id:string,cb:(v:string[])=>void,fail:(e:Error)=>void){return db?onSnapshot(collection(db,'posts',id,'hearts'),s=>cb(s.docs.map(d=>d.id)),fail):localWatch<string[]>('hearts:'+id,[],cb);}
+export async function heart(id:string,uid:string,on:boolean){if(db){if(on)await setDoc(doc(db,'posts',id,'hearts',uid),{uid});else await deleteDoc(doc(db,'posts',id,'hearts',uid));}else{const list=read<string[]>('hearts:'+id,[]);save('hearts:'+id,on?[...new Set([...list,uid])]:list.filter(x=>x!==uid));}}
+export async function report(postId:string,uid:string,reason:string){const value={postId,uid,reason,createdAt:Date.now()};if(db)await addDoc(collection(db,'reports'),value);else save('reports',[...read<unknown[]>('reports',[]),value]);}
+export function watchRooms(uid:string,cb:(v:Room[])=>void,fail:(e:Error)=>void){return db?onSnapshot(query(collection(db,'rooms'),where('members','array-contains',uid)),s=>cb(s.docs.map(d=>({...d.data(),id:d.id}) as Room)),fail):localWatch<Room[]>('rooms',[],cb);}
+export async function createRoom(me:Profile,other:Post){const id=[me.uid,other.uid].sort().join('_');const room:Room={id,members:[me.uid,other.uid],names:{[me.uid]:me.name,[other.uid]:other.name},createdAt:Date.now()};if(db){const existing=await getDoc(doc(db,'rooms',id));if(!existing.exists())await setDoc(doc(db,'rooms',id),room);}else{const all=read<Room[]>('rooms',[]);if(!all.some(r=>r.id===id))save('rooms',[room,...all]);}return id;}
+export function watchMessages(id:string,cb:(v:Message[])=>void,fail:(e:Error)=>void){return db?onSnapshot(query(collection(db,'rooms',id,'messages'),orderBy('createdAt','desc'),limit(200)),s=>cb(s.docs.map(d=>({...d.data(),id:d.id}) as Message).reverse()),fail):localWatch<Message[]>('messages:'+id,[],cb);}
+export async function sendMessage(id:string,uid:string,text:string):Promise<Message>{const msg={uid,text,createdAt:Date.now()};if(db){const saved=await addDoc(collection(db,'rooms',id,'messages'),msg);return {...msg,id:saved.id};}const local={...msg,id:crypto.randomUUID()};save('messages:'+id,[...read<Message[]>('messages:'+id,[]),local]);return local;}

@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signed() { return request.auth != null; }
+  function owner(uid) { return signed() && request.auth.uid == uid; }
+  function text(value, max) { return value is string && value.size() > 0 && value.size() <= max; }
+  function identity(d) { return owner(d.uid) && text(d.name,30) && text(d.avatar,12) && d.createdAt is number && d.createdAt <= request.time.toMillis() + 60000; }
+ function member(roomId) { return signed() && request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.members; }
+  match /users/{userId} {
+   allow read: if signed();
+   allow create, update: if owner(userId) && request.resource.data.keys().hasOnly(['name','avatar','updatedAt']) && text(request.resource.data.name,30) && text(request.resource.data.avatar,12) && request.resource.data.updatedAt is number;
+   allow delete: if owner(userId);
+  }
+  function postExists(postId) { return exists(/databases/$(database)/documents/posts/$(postId)); }
+  match /posts/{postId} {
+   allow read: if signed();
+   allow create: if identity(request.resource.data)
+     && request.resource.data.keys().hasOnly(['uid','name','avatar','text','topic','mood','createdAt'])
+     && text(request.resource.data.text,2000)
+     && request.resource.data.topic in ['Vida cotidiana','Relaciones','Universidad','Ansiedad','Amistad','Pequeñas victorias']
+     && request.resource.data.mood in ['🌤️','🌧️','🌀','🌱','🔥'];
+   allow delete: if owner(resource.data.uid);
+   allow update: if false;
+   match /replies/{replyId} {
+    allow read: if signed() && postExists(postId);
+    allow create: if postExists(postId) && identity(request.resource.data) && text(request.resource.data.text,1000) && request.resource.data.keys().hasOnly(['uid','name','avatar','text','createdAt']);
+    allow delete: if owner(resource.data.uid);
+   }
+   match /hearts/{uid} {
+    allow read: if signed() && postExists(postId);
+    allow create: if postExists(postId) && owner(uid) && request.resource.data.keys().hasOnly(['uid']) && request.resource.data.uid == uid;
+    allow delete: if owner(uid);
+   }
+  }
+  match /reports/{reportId} {
+   allow create: if owner(request.resource.data.uid) && request.resource.data.keys().hasOnly(['postId','uid','reason','createdAt']) && text(request.resource.data.postId,200) && text(request.resource.data.reason,200) && request.resource.data.createdAt is number;
+   allow read, update, delete: if false;
+  }
+  match /rooms/{roomId} {
+   allow get: if signed() && (!exists(/databases/$(database)/documents/rooms/$(roomId)) || request.auth.uid in resource.data.members);
+   allow list: if signed() && request.auth.uid in resource.data.members;
+   allow create: if signed() && request.resource.data.keys().hasOnly(['id','members','names','createdAt'])
+     && request.resource.data.id == roomId && request.resource.data.members is list && request.resource.data.members.size() == 2
+     && request.resource.data.members[0] != request.resource.data.members[1]
+     && request.auth.uid in request.resource.data.members && request.resource.data.names is map
+     && request.resource.data.names.keys().hasOnly(request.resource.data.members)
+     && text(request.resource.data.names[request.resource.data.members[0]],30)
+     && text(request.resource.data.names[request.resource.data.members[1]],30)
+     && request.resource.data.createdAt is number;
+   allow update: if signed() && request.auth.uid in resource.data.members && request.resource.data == resource.data;
+   match /messages/{messageId} {
+    allow read: if member(roomId);
+    allow create: if member(roomId) && owner(request.resource.data.uid) && text(request.resource.data.text,2000) && request.resource.data.createdAt is number && request.resource.data.createdAt <= request.time.toMillis() + 60000 && request.resource.data.keys().hasOnly(['uid','text','createdAt']);
+   }
+  }
+ }
+}

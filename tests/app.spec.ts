@@ -1,0 +1,66 @@
+import { test, expect } from '@playwright/test';
+test.beforeEach(async({page})=>{await page.goto('/');await page.getByRole('button',{name:'Entrar a mi espacio'}).click();await expect(page.getByText('Luna de papel',{exact:true}).first()).toBeVisible();});
+test('publicar, responder, apoyar, guardar y persistir',async({page})=>{
+ await page.getByRole('button',{name:'Compartir mi historia'}).click();
+ await page.getByRole('textbox',{name:'Tu historia',exact:true}).fill('Mi primera historia de prueba universitaria.');
+ await page.getByRole('button',{name:'Publicar historia'}).click();
+ const post=page.locator('article').filter({hasText:'Mi primera historia de prueba universitaria.'});
+ await expect(post).toBeVisible();
+ await post.getByRole('button',{name:'Dar apoyo',exact:true}).click();
+ await expect(post.getByRole('button',{name:'Quitar apoyo'})).toHaveAttribute('aria-pressed','true');
+ await post.getByRole('button',{name:'Guardar historia'}).click();
+ await post.getByRole('button',{name:'Responder',exact:true}).click();
+ await page.getByRole('textbox',{name:'Tu respuesta'}).fill('Gracias por compartirlo, te escucho.');
+ await page.getByRole('button',{name:'Enviar respuesta'}).click();
+ await expect(page.getByText('Gracias por compartirlo, te escucho.')).toBeVisible();
+ await page.getByRole('button',{name:'Cerrar',exact:true}).click();
+ await page.reload();
+ await expect(post).toBeVisible();
+ await expect(post.getByRole('button',{name:'Quitar de guardados'})).toHaveAttribute('aria-pressed','true');
+ await expect(post.getByRole('button',{name:'Quitar apoyo'})).toHaveAttribute('aria-pressed','true');
+ await expect(post.getByRole('button',{name:'1 respuesta'})).toBeVisible();
+ await post.getByRole('button',{name:/Opciones de/}).click();
+ await page.getByRole('button',{name:'Eliminar historia',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Eliminar historia',exact:true}).click();
+ await expect(post).toHaveCount(0);
+});
+test('buscar y conversar con modo demo explícito',async({page})=>{
+ await page.getByRole('textbox',{name:'Buscar historias'}).fill('incertidumbre');
+ await expect(page.locator('article')).toHaveCount(1);
+ await page.locator('article').getByRole('button',{name:'1 respuesta'}).click();
+ await page.getByRole('button',{name:'Conversar',exact:true}).click();
+ await expect(page.getByText(/Demo local: puedes probar el envío/)).toBeVisible();
+ await page.getByRole('textbox',{name:'Mensaje',exact:true}).fill('Hola, mensaje de prueba.');
+ await page.getByRole('button',{name:'Enviar mensaje'}).click();
+ await expect(page.getByText('Hola, mensaje de prueba.')).toBeVisible();
+ await page.reload();
+ await page.getByRole('button',{name:'Conversaciones',exact:true}).filter({visible:true}).first().click();
+ await page.getByRole('button',{name:/Luna de papel Abrir conversación/}).click();
+ await expect(page.getByText('Hola, mensaje de prueba.')).toBeVisible();
+});
+test('perfil, manifest, service worker y diseño sin overflow',async({page},testInfo)=>{
+ await page.getByRole('button',{name:'Mi perfil',exact:true}).first().click();
+ await page.getByRole('textbox',{name:'Tu alias',exact:true}).fill('Nube curiosa');
+ await page.getByRole('button',{name:'Avatar 🦊',exact:true}).click();
+ await page.getByRole('button',{name:'Guardar perfil'}).click();
+ await page.reload();
+ await page.getByRole('button',{name:'Mi perfil',exact:true}).first().click();
+ await expect(page.getByRole('textbox',{name:'Tu alias',exact:true})).toHaveValue('Nube curiosa');
+ const manifest=await page.request.get('/manifest.webmanifest');expect(manifest.ok()).toBeTruthy();
+ const data=await manifest.json();expect(data.display).toBe('standalone');expect(data.icons.length).toBeGreaterThan(1);
+ for(const icon of data.icons){expect((await page.request.get(icon.src)).ok()).toBeTruthy();}
+ await page.evaluate(()=>navigator.serviceWorker.ready);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+ await page.screenshot({path:`work/profile-${testInfo.project.name}.png`,fullPage:true});
+});
+test('captura de inicio y carga offline',async({page,context},testInfo)=>{
+ await page.evaluate(()=>navigator.serviceWorker.ready);
+ await page.reload();
+ await expect(page.locator('article')).toHaveCount(4);
+ await page.screenshot({path:`work/home-${testInfo.project.name}.png`,fullPage:true});
+ await context.setOffline(true);
+ await page.reload();
+ await expect(page.getByRole('heading',{name:'Aquí puedes ser tú.'})).toBeVisible();
+ await expect(page.locator('article')).toHaveCount(4);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+});
