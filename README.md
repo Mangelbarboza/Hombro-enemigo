@@ -12,7 +12,7 @@ npm install
 npm run dev
 ```
 
-Abre http://localhost:5173. Sin variables Firebase funciona automáticamente una demostración con historias ficticias y persistencia en localStorage. No hay usuarios reales, sincronización entre dispositivos ni respuestas automáticas. No se migran los datos de demo al activar Firebase.
+Abre http://localhost:5173. Sin variables Firebase la app queda vacía y usa persistencia local para que puedas revisar el flujo. Al conectar Firebase, usuarios, publicaciones, reacciones, respuestas y conversaciones se sincronizan en tiempo real.
 
 ## Conectar Firebase
 
@@ -52,7 +52,8 @@ firebase deploy --project TU_ID_DE_PROYECTO --only hosting,firestore:rules
 
 - Historias por tema y emoción, búsqueda, orden y eliminación propia.
 - Respuestas, apoyo reversible, guardados y personalización de alias/avatar.
-- Conversaciones entre participantes, con envío real al conectar Firebase.
+- Registro anónimo sin correo ni contraseña: alias y avatar predefinido guardados en `users`.
+- Conversaciones privadas entre participantes, con envío real al conectar Firebase.
 - Reportes para revisión manual y ocultación local de alias.
 - Diseño responsive, navegación móvil, diálogos con control de foco y textos sobre el contexto del prototipo.
 - No se incluye analítica ni captura de comportamiento. Para el estudio: definir responsable, consentimiento informado separado, finalidad, retención, retiro y acceso a los datos antes de reclutar participantes.
