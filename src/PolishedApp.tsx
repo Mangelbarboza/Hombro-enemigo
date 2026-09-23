@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {Camera,ChevronLeft,ImagePlus,MessageCircle,Plus,Send,Trash2,X} from 'lucide-react';
 import {topics,type Message,type Post,type Profile,type Room} from './data';
 import * as store from './store';
+import './polish.css';
 type View='feed'|'categories'|'chat';
 const avatars=['🪐','🌙','🌱','🌊','🌻','🦊','🐢','🍄'];
 const cats=['Todo',...topics.slice(1)];
