@@ -4,12 +4,24 @@ service cloud.firestore {
   function signed() { return request.auth != null; }
   function owner(uid) { return signed() && request.auth.uid == uid; }
   function text(value, max) { return value is string && value.size() > 0 && value.size() <= max; }
-  function identity(d) { return owner(d.uid) && text(d.name,30) && text(d.avatar,12) && d.createdAt is number && d.createdAt <= request.time.toMillis() + 60000; }
- function member(roomId) { return signed() && request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.members; }
+  function identity(d) { return owner(d.uid) && text(d.name,30) && text(d.avatar,1000) && d.createdAt is number && d.createdAt <= request.time.toMillis() + 60000; }
+  function member(roomId) { return signed() && request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.members; }
+  function roomNotBlocked(roomId) {
+   let members = get(/databases/$(database)/documents/rooms/$(roomId)).data.members;
+   return !exists(/databases/$(database)/documents/users/$(members[0])/blocked/$(members[1]))
+     && !exists(/databases/$(database)/documents/users/$(members[1])/blocked/$(members[0]));
+  }
   match /users/{userId} {
    allow read: if signed();
-   allow create, update: if owner(userId) && request.resource.data.keys().hasOnly(['name','avatar','updatedAt']) && text(request.resource.data.name,30) && text(request.resource.data.avatar,12) && request.resource.data.updatedAt is number;
+   allow create, update: if owner(userId) && request.resource.data.keys().hasOnly(['name','avatar','username','updatedAt']) && text(request.resource.data.name,30) && text(request.resource.data.avatar,1000) && text(request.resource.data.username,20) && request.resource.data.updatedAt is number;
    allow delete: if owner(userId);
+   match /following/{postId} { allow read, write: if owner(userId); }
+   match /blocked/{blockedId} { allow read, write: if owner(userId); }
+  }
+  match /usernames/{username} {
+   allow read: if signed();
+   allow create: if signed() && request.resource.data.uid == request.auth.uid;
+   allow update, delete: if signed() && resource.data.uid == request.auth.uid;
   }
   function postExists(postId) { return exists(/databases/$(database)/documents/posts/$(postId)); }
   match /posts/{postId} {
@@ -25,6 +37,11 @@ service cloud.firestore {
     allow read: if signed() && postExists(postId);
     allow create: if postExists(postId) && identity(request.resource.data) && text(request.resource.data.text,1000) && request.resource.data.keys().hasOnly(['uid','name','avatar','text','createdAt','media']);
     allow delete: if owner(resource.data.uid);
+    match /votes/{uid} {
+     allow read: if signed();
+     allow create, update: if owner(uid) && request.resource.data.uid == uid && request.resource.data.value in [-1,1];
+     allow delete: if owner(uid);
+    }
    }
    match /hearts/{uid} {
     allow read: if signed() && postExists(postId);
@@ -48,9 +65,10 @@ service cloud.firestore {
      && text(request.resource.data.names[request.resource.data.members[1]],30)
      && request.resource.data.createdAt is number;
    allow update: if signed() && request.auth.uid in resource.data.members && request.resource.data == resource.data;
+   allow delete: if signed() && request.auth.uid in resource.data.members;
    match /messages/{messageId} {
     allow read: if member(roomId);
-    allow create: if member(roomId) && owner(request.resource.data.uid) && text(request.resource.data.text,2000) && request.resource.data.createdAt is number && request.resource.data.createdAt <= request.time.toMillis() + 60000 && request.resource.data.keys().hasOnly(['uid','text','createdAt','media']);
+    allow create: if member(roomId) && roomNotBlocked(roomId) && owner(request.resource.data.uid) && text(request.resource.data.text,2000) && request.resource.data.createdAt is number && request.resource.data.createdAt <= request.time.toMillis() + 60000 && request.resource.data.keys().hasOnly(['uid','text','createdAt','media']);
    }
   }
  }

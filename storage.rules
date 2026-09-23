@@ -13,5 +13,10 @@ service firebase.storage {
       allow create: if signed() && request.auth.uid == userId && image();
       allow delete: if signed() && request.auth.uid == userId;
     }
+    match /profiles/{userId}/{fileName} {
+      allow read: if signed();
+      allow create, update: if signed() && request.auth.uid == userId && image();
+      allow delete: if signed() && request.auth.uid == userId;
+    }
   }
 }
