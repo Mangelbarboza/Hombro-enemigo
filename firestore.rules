@@ -38,7 +38,7 @@ service cloud.firestore {
    allow create: if identity(request.resource.data)
      && request.resource.data.keys().hasOnly(['uid','name','avatar','text','topic','mood','createdAt','media'])
      && text(request.resource.data.text,2000)
-     && request.resource.data.topic in ['Vida cotidiana','Relaciones','Universidad','Ansiedad','Amistad','Pequeñas victorias']
+     && request.resource.data.topic in ['Vida cotidiana','Relaciones','Sexualidad','Universidad','Ansiedad','Amistad','Pequeñas victorias']
      && request.resource.data.mood in ['🌤️','🌧️','🌀','🌱','🔥'];
    allow delete: if owner(resource.data.uid);
    allow update: if false;
