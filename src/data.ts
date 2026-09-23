@@ -1,4 +1,4 @@
-export type Profile = { uid:string; name:string; avatar:string; username?:string };
+export type Profile = { uid:string; name:string; avatar:string; username?:string; bio?:string; instagram?:string };
 export type Media = { url:string; path:string };
 export type Post = { id:string; uid:string; name:string; avatar:string; text:string; topic:string; mood:string; createdAt:number; media?:Media };
 export type Reply = { id:string; uid:string; name:string; avatar:string; text:string; createdAt:number; media?:Media };

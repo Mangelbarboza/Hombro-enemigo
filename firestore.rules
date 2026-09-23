@@ -13,7 +13,7 @@ service cloud.firestore {
   }
   match /users/{userId} {
    allow read: if signed();
-   allow create, update: if owner(userId) && request.resource.data.keys().hasOnly(['name','avatar','username','updatedAt']) && text(request.resource.data.name,30) && text(request.resource.data.avatar,1000) && text(request.resource.data.username,20) && request.resource.data.updatedAt is number;
+   allow create, update: if owner(userId) && request.resource.data.keys().hasOnly(['name','avatar','username','bio','instagram','updatedAt']) && text(request.resource.data.name,30) && text(request.resource.data.avatar,1000) && text(request.resource.data.username,20) && request.resource.data.bio is string && request.resource.data.bio.size() <= 100 && request.resource.data.instagram is string && request.resource.data.instagram.size() <= 30 && request.resource.data.updatedAt is number;
    allow delete: if owner(userId);
    match /following/{postId} { allow read, write: if owner(userId); }
    match /blocked/{blockedId} { allow read, write: if owner(userId); }
