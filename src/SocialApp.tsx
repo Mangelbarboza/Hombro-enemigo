@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {Ban,Bell,Camera,ChevronLeft,ImagePlus,MessageCircle,Plus,Send,ThumbsDown,ThumbsUp,Trash2,UserPlus,Users,X} from 'lucide-react';
+import {Ban,Bell,Camera,ChevronLeft,ImagePlus,LogOut,MessageCircle,Plus,Send,ThumbsDown,ThumbsUp,Trash2,UserPlus,Users,X} from 'lucide-react';
 import {ago,topics,type Group,type GroupInvite,type Message,type Post,type Profile,type Reply,type Room} from './data';
 import * as store from './store';
 import './social.css';
@@ -7,7 +7,7 @@ import './social.css';
 type View='feed'|'following'|'chat';
 type Person={uid:string;name:string};
 const avatars=['🪐','🌙','🌱','🌊','🌻','🦊','🐢','🍄'];
-const friendlyError=(value:unknown)=>{const message=value instanceof Error?value.message:'';if(message.includes('auth/email-already-in-use'))return 'Ese nombre de usuario ya está registrado.';if(message.includes('auth/invalid-credential'))return 'Usuario o contraseña incorrectos.';if(message.includes('auth/operation-not-allowed'))return 'Activa el acceso con correo y contraseña en Firebase Authentication.';if(message.includes('storage/unauthorized')||message.includes('permission-denied'))return 'Firebase no permitió guardar el cambio. Revisa sus reglas.';if(message.includes('network'))return 'No hay conexión. Inténtalo de nuevo.';return message&&message.length<150?message:'No se pudo completar. Inténtalo de nuevo.'};
+const friendlyError=(value:unknown)=>{const message=value instanceof Error?value.message:'';if(message.includes('auth/email-already-in-use'))return 'Ese nombre de usuario ya está registrado.';if(message.includes('auth/invalid-credential'))return 'Usuario o contraseña incorrectos.';if(message.includes('auth/operation-not-allowed'))return 'Activa el acceso con correo y contraseña en Firebase Authentication.';if(message.toLowerCase().includes('permission')||message.includes('storage/unauthorized'))return 'No tienes permiso para realizar esta acción. Actualiza la app e inténtalo de nuevo.';if(message.includes('network'))return 'No hay conexión. Inténtalo de nuevo.';return message&&message.length<150?message:'No se pudo completar. Inténtalo de nuevo.'};
 
 function Avatar({value,size='normal'}:{value:string;size?:'normal'|'large'}){return value.startsWith('http')?<img className={`s-avatar ${size}`} src={value} alt="Foto de perfil"/>:<span className={`s-avatar ${size}`}>{value}</span>}
 function Modal({title,close,children}:{title:string;close:()=>void;children:React.ReactNode}){return <div className="s-shade"><section className="s-modal"><header><button onClick={close}><ChevronLeft/></button><b>{title}</b><button onClick={close}><X/></button></header>{children}</section></div>}
@@ -23,7 +23,7 @@ export default function SocialApp(){
  const visible=posts.filter(p=>!blocked.includes(p.uid)).filter(p=>view!=='following'||p.uid===profile.uid||following.includes(p.id)).filter(p=>topic==='Todo'||p.topic===topic);
  const openChat=async(person:Person)=>{if(person.uid===profile.uid)return;if(blocked.includes(person.uid)){fail(new Error('Has bloqueado a esta persona.'));return}try{setRoom(await store.createRoom(profile,person));setDetail(null);setView('chat')}catch(e){fail(e)}};
  return <main className="social">
-  <header className="s-top"><div><Avatar value={profile.avatar}/><span><b>Hombro Enemigo</b><small>@{profile.username}</small></span></div><select aria-label="Filtrar categoría" value={topic} onChange={e=>setTopic(e.target.value)}>{topics.map(t=><option key={t}>{t}</option>)}</select></header>
+  <header className="s-top"><div><Avatar value={profile.avatar}/><span><b>Hombro Enemigo</b><small>@{profile.username}</small></span></div><div className="s-top-actions"><select aria-label="Filtrar categoría" value={topic} onChange={e=>setTopic(e.target.value)}>{topics.map(t=><option key={t}>{t}</option>)}</select><button title="Cerrar sesión" aria-label="Cerrar sesión" onClick={()=>store.logout().catch(fail)}><LogOut/></button></div></header>
   {view==='chat'?<Chats profile={profile} selected={room} setSelected={setRoom} blocked={blocked} onBlock={async id=>{await store.blockUser(profile.uid,id);setRoom(null)}} fail={fail}/>:<section className="s-feed">{visible.length?visible.map(post=><PostCard key={post.id} post={post} open={()=>setDetail(post)}/>):<div className="s-empty">{view==='following'?'Aquí aparecerán tus publicaciones y aquellas donde comentes.':'No hay desahogos en esta categoría.'}</div>}</section>}
   <nav className="s-nav"><button className={view==='feed'?'active':''} onClick={()=>setView('feed')}>Inicio</button><button className={view==='following'?'active':''} onClick={()=>setView('following')}>Siguiendo</button><button className={view==='chat'?'active':''} onClick={()=>setView('chat')}>Chats</button></nav>
   {view!=='chat'&&<button className="s-plus" onClick={()=>setCompose(true)}><Plus/></button>}
