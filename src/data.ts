@@ -6,6 +6,7 @@ export type Message = { id:string; uid:string; text:string; createdAt:number; me
 export type Room = { id:string; members:string[]; names:Record<string,string>; createdAt:number };
 export type Group = { id:string; name:string; ownerId:string; members:string[]; names:Record<string,string>; createdAt:number };
 export type GroupInvite = { id:string; groupId:string; groupName:string; fromUid:string; fromName:string; toUid:string; toUsername:string; status:'pending'|'accepted'|'declined'; createdAt:number };
+export type NotificationItem = { id:string; type:'reply'|'message'|'group_message'|'invite'; title:string; text:string; actorUid:string; postId?:string; roomId?:string; groupId?:string; read:boolean; createdAt:number };
 export const topics = ['Todo','Vida cotidiana','Relaciones','Sexualidad','Universidad','Ansiedad','Amistad','Pequeñas victorias'];
 export const moods = [{emoji:'🌤️',label:'En calma'},{emoji:'🌧️',label:'Triste'},{emoji:'🌀',label:'Con ansiedad'},{emoji:'🌱',label:'Con esperanza'},{emoji:'🔥',label:'Frustrado'}];
 export const examples:Post[] = [];

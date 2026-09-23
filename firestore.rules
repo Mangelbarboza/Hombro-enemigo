@@ -26,6 +26,14 @@ service cloud.firestore {
       && request.resource.data.status in ['accepted','declined'];
     allow delete: if owner(userId) || owner(resource.data.fromUid);
    }
+   match /notifications/{notificationId} {
+    allow read: if owner(userId);
+    allow update: if owner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+    allow create, delete: if false;
+   }
+   match /devices/{deviceId} {
+    allow read, create, update, delete: if owner(userId);
+   }
   }
   match /usernames/{username} {
    allow read: if signed();
