@@ -17,6 +17,15 @@ service cloud.firestore {
    allow delete: if owner(userId);
    match /following/{postId} { allow read, write: if owner(userId); }
    match /blocked/{blockedId} { allow read, write: if owner(userId); }
+   match /groupInvites/{groupId} {
+    allow read: if owner(userId);
+    allow create: if signed() && request.resource.data.toUid == userId
+      && request.resource.data.fromUid == request.auth.uid
+      && get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId == request.auth.uid;
+    allow update: if owner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+      && request.resource.data.status in ['accepted','declined'];
+    allow delete: if owner(userId) || owner(resource.data.fromUid);
+   }
   }
   match /usernames/{username} {
    allow read: if signed();
@@ -69,6 +78,29 @@ service cloud.firestore {
    match /messages/{messageId} {
     allow read: if member(roomId);
     allow create: if member(roomId) && roomNotBlocked(roomId) && owner(request.resource.data.uid) && text(request.resource.data.text,2000) && request.resource.data.createdAt is number && request.resource.data.createdAt <= request.time.toMillis() + 60000 && request.resource.data.keys().hasOnly(['uid','text','createdAt','media']);
+   }
+  }
+  match /groups/{groupId} {
+   allow get, list: if signed() && request.auth.uid in resource.data.members;
+   allow create: if signed() && request.resource.data.ownerId == request.auth.uid
+     && request.resource.data.members == [request.auth.uid]
+     && request.resource.data.names[request.auth.uid] is string
+     && text(request.resource.data.name,40) && request.resource.data.createdAt is number;
+   allow update: if signed() && (
+     resource.data.ownerId == request.auth.uid ||
+     (!(request.auth.uid in resource.data.members)
+       && request.auth.uid in request.resource.data.members
+       && request.resource.data.members.size() == resource.data.members.size() + 1
+       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members','names'])
+       && exists(/databases/$(database)/documents/users/$(request.auth.uid)/groupInvites/$(groupId)))
+     );
+   allow delete: if signed() && resource.data.ownerId == request.auth.uid;
+   match /messages/{messageId} {
+    allow read: if signed() && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members;
+    allow create: if signed() && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members
+      && owner(request.resource.data.uid) && text(request.resource.data.text,2000)
+      && request.resource.data.createdAt is number
+      && request.resource.data.keys().hasOnly(['uid','text','createdAt','media']);
    }
   }
  }
