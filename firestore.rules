@@ -4,7 +4,7 @@ service cloud.firestore {
   function signed() { return request.auth != null; }
   function owner(uid) { return signed() && request.auth.uid == uid; }
   function text(value, max) { return value is string && value.size() > 0 && value.size() <= max; }
-  function identity(d) { return owner(d.uid) && text(d.name,30) && text(d.avatar,1000) && d.createdAt is number && d.createdAt <= request.time.toMillis() + 60000; }
+  function identity(d) { return owner(d.uid) && text(d.name,30) && text(d.avatar,1000) && d.createdAt is number; }
   function member(roomId) { return signed() && request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.members; }
   function roomNotBlocked(roomId) {
    let members = get(/databases/$(database)/documents/rooms/$(roomId)).data.members;
@@ -77,7 +77,7 @@ service cloud.firestore {
    allow delete: if signed() && request.auth.uid in resource.data.members;
    match /messages/{messageId} {
     allow read: if member(roomId);
-    allow create: if member(roomId) && roomNotBlocked(roomId) && owner(request.resource.data.uid) && text(request.resource.data.text,2000) && request.resource.data.createdAt is number && request.resource.data.createdAt <= request.time.toMillis() + 60000 && request.resource.data.keys().hasOnly(['uid','text','createdAt','media']);
+    allow create: if member(roomId) && roomNotBlocked(roomId) && owner(request.resource.data.uid) && text(request.resource.data.text,2000) && request.resource.data.createdAt is number && request.resource.data.keys().hasOnly(['uid','text','createdAt','media']);
    }
   }
   match /groups/{groupId} {
