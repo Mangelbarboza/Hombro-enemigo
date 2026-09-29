@@ -7,10 +7,6 @@
 [![Firebase](https://img.shields.io/badge/Firebase-12-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
 [![PWA](https://img.shields.io/badge/PWA-Instalable-5A0FC8?style=for-the-badge)](https://web.dev/progressive-web-apps/)
 
-<p align="center">
-  <img src="docs/preview.png" alt="Vista móvil de Hombro Enemigo" width="360" />
-</p>
-
 ## Sobre el proyecto
 
 **Hombro Enemigo** es una aplicación web instalable creada como proyecto universitario. Permite explorar publicaciones sin una cuenta y, al registrarse con un usuario y contraseña, participar en conversaciones de forma seudónima.
